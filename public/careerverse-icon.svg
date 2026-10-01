@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="100%" height="100%" fill="none">
+  <!-- ICON MONOGRAM -->
+  <g id="brand-icon" transform="translate(15, 6)">
+    <!-- Stylized 'C' in Deep Navy Blue -->
+    <path 
+      d="M 132 58 C 122 45, 102 36, 76 36 C 36 36, 12 68, 12 106 C 12 146, 38 172, 78 172 C 104 172, 124 160, 136 146 L 123 134 C 113 145, 98 155, 78 155 C 48 155, 29 133, 29 106 C 29 76, 49 53, 76 53 C 96 53, 110 61, 118 71 Z" 
+      fill="#062147" 
+    />
+    <!-- 'C' Top Serif Finial Hook -->
+    <path 
+      d="M 118 71 C 121 66, 126 60, 134 56 L 130 52 C 124 56, 118 62, 114 69 Z" 
+      fill="#062147" 
+    />
+
+    <!-- Stylized 'V' Left Curved Arm (Warm Gold Swoop) -->
+    <path 
+      d="M 38 172 C 58 182, 86 176, 110 148 L 166 44 C 168 40, 171 36, 174 32 C 172 37, 162 56, 154 74 L 108 144 C 90 168, 64 176, 38 172 Z" 
+      fill="#C9932B" 
+    />
+
+    <!-- Stylized 'V' Right Downward Arm (Deep Navy) -->
+    <path 
+      d="M 124 74 L 158 174 C 162 186, 166 196, 170 205 L 182 205 C 176 193, 170 178, 164 156 L 142 74 Z" 
+      fill="#062147" 
+    />
+
+    <!-- Golden Spark / 4-Point Star at Apex of V -->
+    <path 
+      d="M 182 8 Q 182 24 194 24 Q 182 24 182 40 Q 182 24 170 24 Q 182 24 182 8 Z" 
+      fill="#C9932B" 
+    />
+  </g>
+</svg>

@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  --color-navy-950: #051429;
+  --color-navy-900: #0B2A52;
+  --color-navy-800: #123E73;
+  --color-navy-700: #1B5192;
+  --color-gold-500: #C99A2E;
+  --color-gold-400: #E5C66B;
+  --color-gold-600: #A87D1B;
+  --color-surface-bg: #F7F9FC;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.015em;
+}
+
+*:focus-visible {
+  outline: 2px solid #C99A2E;
+  outline-offset: 2px;
+}
+

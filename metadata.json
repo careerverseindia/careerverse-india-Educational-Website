@@ -1,0 +1,8 @@
+{
+  "name": "CareerVerse India - Career Counselling & Admissions",
+  "description": "Personalized career counselling and admission guidance for students, graduates and working professionals across India.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
