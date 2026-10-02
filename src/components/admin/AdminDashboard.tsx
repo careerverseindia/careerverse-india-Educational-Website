@@ -162,7 +162,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       if (adminError) {
         console.error('Admin verification error:', adminError);
         await supabase.auth.signOut();
-        setAuthError(`Admin verification failed: ${adminError.message}`);;
+        setAuthError(`Admin verification failed: ${adminError.message}`);
         return;
       }
 
@@ -557,12 +557,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
             VIEW 1: LEADS MANAGEMENT (Original & Enhanced)
             ======================================================== */}
         {mainSection === 'leads' && (
-          <>
-            {error && (
-      <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 mb-4">
+  <>
+    {error && (
+      <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
 
-        <div>
+        <div className="flex-1">
           <p className="text-sm font-bold text-rose-800">
             Unable to load leads
           </p>
@@ -582,6 +582,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         </div>
       </div>
     )}
+
+    {/* rest of Leads Management content */}
+  </>
+)}
+       
 
     {/* Supabase Status Pill */}
     {!isSupabaseConfigured() && (
