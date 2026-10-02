@@ -134,6 +134,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!supabase) {
+      setAuthError('Supabase is not configured for admin sign-in.');
+      return;
+    }
+
     setAuthError('');
     setAuthLoading(true);
 
@@ -182,7 +187,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setIsAuthenticated(false);
     setEmail('');
     setPassword('');
@@ -557,47 +564,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
             VIEW 1: LEADS MANAGEMENT (Original & Enhanced)
             ======================================================== */}
         {mainSection === 'leads' && (
-  <>
-    {error && (
-      <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <>
+            {error && (
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
 
-        <div className="flex-1">
-          <p className="text-sm font-bold text-rose-800">
-            Unable to load leads
-          </p>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-rose-800">
+                    Unable to load leads
+                  </p>
 
-          <p className="mt-1 text-xs text-rose-700 break-words">
-            {error}
-          </p>
+                  <p className="mt-1 text-xs text-rose-700 break-words">
+                    {error}
+                  </p>
 
-          <button
-            type="button"
-            onClick={loadLeads}
-            disabled={loading}
-            className="mt-3 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
-          >
-            {loading ? 'Retrying...' : 'Retry'}
-          </button>
-        </div>
-      </div>
-    )}
+                  <button
+                    type="button"
+                    onClick={loadLeads}
+                    disabled={loading}
+                    className="mt-3 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
+                  >
+                    {loading ? 'Retrying...' : 'Retry'}
+                  </button>
+                </div>
+              </div>
+            )}
 
-    {/* rest of Leads Management content */}
-  </>
-)}
-       
-
-    {/* Supabase Status Pill */}
-    {!isSupabaseConfigured() && (
-      <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800">
-        <div className="flex items-center gap-2">
-          <Database className="w-4 h-4" />
-          {/* YOUR EXISTING CONTENT CONTINUES */}
-        </div>
-      </div>
-    )}
-            {/* Supabase Status Pill */}
             {!isSupabaseConfigured() && (
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800">
                 <div className="flex items-center gap-2">
@@ -609,7 +601,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               </div>
             )}
 
-            {/* Metrics Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
                 <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Leads</span>
@@ -641,10 +632,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               </div>
             </div>
 
-            {/* Filters and Search Bar */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4">
-
-              {/* Type Tabs */}
               <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-full md:w-auto overflow-x-auto">
                 <button
                   onClick={() => setActiveTab('all')}
@@ -676,7 +664,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 </button>
               </div>
 
-              {/* Search & Status Filter */}
               <div className="flex items-center gap-2.5 w-full md:w-auto">
                 <div className="relative flex-1 sm:w-64">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -705,7 +692,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               </div>
             </div>
 
-            {/* Leads Table */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -730,9 +716,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       filteredLeads.map((lead) => {
                         const isNew = lead.status === 'New';
                         const who = lead.who_is_booking || 'Student';
-                        const currentClass = lead.current_class || ('current_qualification' in lead ? lead.current_qualification : '');
-                        const prefCareer = lead.preferred_career || ('interested_field' in lead ? lead.interested_field : '') || '';
-
+                        const currentClass =
+                          lead.current_class ||
+                          ('current_qualification' in lead
+                            ? lead.current_qualification
+                            : '');
+                        const prefCareer =
+                          lead.preferred_career ||
+                          ('interested_field' in lead
+                            ? lead.interested_field
+                            : '') ||
+                          '';
                         const leadLabel = lead.lead_type === 'career_guidance'
                           ? 'Career Guidance'
                           : lead.lead_type === 'admission_enquiry'
@@ -744,7 +738,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             key={lead.id}
                             className={`hover:bg-slate-50/80 transition-colors ${isNew ? 'bg-amber-50/20' : ''}`}
                           >
-                            {/* Source */}
                             <td className="py-3.5 px-4">
                               <span className={`font-semibold ${lead.lead_type === 'career_guidance'
                                   ? 'text-blue-700'
@@ -766,7 +759,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                               </div>
                             </td>
 
-                            {/* Candidate & Parent */}
                             <td className="py-3.5 px-4">
                               <div className="font-bold text-slate-900 text-sm">{lead.full_name}</div>
                               <div className="flex items-center gap-3 text-slate-500 mt-0.5">
@@ -788,7 +780,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                               )}
                             </td>
 
-                            {/* Class & Preference */}
                             <td className="py-3.5 px-4 text-slate-700">
                               <div className="font-semibold text-slate-800 line-clamp-1">{currentClass}</div>
                               {prefCareer && (
@@ -799,7 +790,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                               )}
                             </td>
 
-                            {/* Date */}
                             <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-slate-400" />
@@ -810,7 +800,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                               </div>
                             </td>
 
-                            {/* Status Select */}
                             <td className="py-3.5 px-4">
                               <select
                                 value={lead.status}
@@ -837,7 +826,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                               </select>
                             </td>
 
-                            {/* Actions */}
                             <td className="py-3.5 px-4 text-right whitespace-nowrap">
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
