@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   fetchUnifiedLeads,
   updateLeadStatus,
@@ -63,6 +63,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   // Leads State
   const [leads, setLeads] = useState<UnifiedLead[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'career_guidance' | 'admission_enquiry' | 'counselling_request'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,18 +90,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [isAddingCat, setIsAddingCat] = useState(false);
 
   const loadLeads = async () => {
-    setLoading(true);
+  setLoading(true);
+  setError('');
+
+  try {
     const data = await fetchUnifiedLeads();
+
     setLeads(data);
+  } catch (error: unknown) {
+    console.error(
+      'Failed to load leads from Supabase:',
+      error
+    );
+
+    setLeads([]);
+
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
+      setError(
+        'Unable to load leads from the database.'
+      );
+    }
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   const loadAllData = () => {
-    loadLeads();
-    setSettings(getSiteSettings());
-    setUniversities(getStoredUniversities());
-    setCategories(getStoredCategories());
-  };
+  loadLeads();
+
+  setSettings(getSiteSettings());
+  setUniversities(getStoredUniversities());
+  setCategories(getStoredCategories());
+};
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -535,6 +558,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
             ======================================================== */}
         {mainSection === 'leads' && (
           <>
+            {error && (
+      <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 mb-4">
+        <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+
+        <div>
+          <p className="text-sm font-bold text-rose-800">
+            Unable to load leads
+          </p>
+
+          <p className="mt-1 text-xs text-rose-700 break-words">
+            {error}
+          </p>
+
+          <button
+            type="button"
+            onClick={loadLeads}
+            disabled={loading}
+            className="mt-3 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg"
+          >
+            {loading ? 'Retrying...' : 'Retry'}
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Supabase Status Pill */}
+    {!isSupabaseConfigured() && (
+      <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800">
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4" />
+          {/* YOUR EXISTING CONTENT CONTINUES */}
+        </div>
+      </div>
+    )}
             {/* Supabase Status Pill */}
             {!isSupabaseConfigured() && (
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800">
