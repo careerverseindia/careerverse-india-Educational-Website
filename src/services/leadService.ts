@@ -1,449 +1,965 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { 
-  CareerGuidanceLead, 
-  AdmissionEnquiry, 
-  CounsellingRequest, 
-  UnifiedLead, 
-  LeadStatus 
+import {
+  CareerGuidanceLead,
+  AdmissionEnquiry,
+  CounsellingRequest,
+  UnifiedLead,
+  LeadStatus
 } from '../types';
 
-const STORAGE_KEYS = {
-  CAREER_GUIDANCE: 'careerverse_career_guidance_leads',
-  ADMISSIONS: 'careerverse_admission_enquiries',
-  COUNSELLING: 'careerverse_counselling_requests',
-};
+/**
+ * ============================================================
+ * CareerVerse Lead Service
+ * ============================================================
+ *
+ * PRODUCTION RULE:
+ * Supabase is the single source of truth.
+ *
+ * We intentionally DO NOT use localStorage for lead persistence.
+ * This guarantees that:
+ *
+ * Phone -> Supabase
+ * Laptop -> Supabase
+ * Admin -> Supabase
+ *
+ * Everyone sees the same real-time database records.
+ * ============================================================
+ */
 
-// Seed sample initial leads into LocalStorage if empty so admin has realistic immediate data to view
-const initLocalSeed = () => {
-  if (typeof window === 'undefined') return;
+/**
+ * ------------------------------------------------------------
+ * Helpers
+ * ------------------------------------------------------------
+ */
 
-  if (!localStorage.getItem(STORAGE_KEYS.CAREER_GUIDANCE)) {
-    const seedGuidance: CareerGuidanceLead[] = [
-      {
-        id: 'cg-seed-1',
-        created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-        status: 'New',
-        full_name: 'Aarav Sharma',
-        mobile_number: '+91 98765 43210',
-        email: 'aarav.sharma@example.com',
-        current_qualification: 'Class 12 (CBSE - Science PCM)',
-        school_college: 'Delhi Public School, R.K. Puram',
-        city: 'New Delhi',
-        state: 'Delhi',
-        interested_field: 'Engineering & Technology',
-        preferred_course: 'B.Tech AI & Data Science',
-        career_goal: 'Wants to specialize in artificial intelligence and machine learning.',
-        preferred_counselling_mode: 'Online',
-        message: 'Looking for advice between computer science core vs AI specialization and top deemed universities.'
-      },
-      {
-        id: 'cg-seed-2',
-        created_at: new Date(Date.now() - 3600000 * 28).toISOString(),
-        status: 'Contacted',
-        full_name: 'Pooja Iyer',
-        mobile_number: '+91 98220 11223',
-        email: 'pooja.iyer@example.com',
-        current_qualification: 'B.Com Graduate',
-        school_college: 'St. Joseph College of Commerce',
-        city: 'Bangalore',
-        state: 'Karnataka',
-        interested_field: 'Commerce & Management',
-        preferred_course: 'Online MBA or PGDM',
-        career_goal: 'Transition into corporate financial analytics.',
-        preferred_counselling_mode: 'Phone',
-        message: 'Currently working in accounts, want guidance on accredited executive or online MBA.'
-      }
-    ];
-    localStorage.setItem(STORAGE_KEYS.CAREER_GUIDANCE, JSON.stringify(seedGuidance));
+function getSupabaseClient() {
+  if (!isSupabaseConfigured() || !supabase) {
+    throw new Error(
+      'Supabase is not configured. Please check your Supabase environment variables.'
+    );
   }
 
-  if (!localStorage.getItem(STORAGE_KEYS.ADMISSIONS)) {
-    const seedAdmissions: AdmissionEnquiry[] = [
-      {
-        id: 'adm-seed-1',
-        created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-        status: 'New',
-        full_name: 'Rohan Deshmukh',
-        mobile_number: '+91 98450 78901',
-        email: 'rohan.deshmukh@example.com',
-        current_qualification: 'Class 12 (PCB)',
-        preferred_program: 'Bachelor of Physiotherapy (BPT)',
-        preferred_specialization: 'Sports & Orthopedic Rehabilitation',
-        preferred_location: 'Pune / Mumbai',
-        budget_range: '₹1 Lakh - ₹1.5 Lakh / Year',
-        preferred_intake_year: '2026-27',
-        message: 'Interested in clinical teaching hospital affiliations and internship guarantees.'
-      },
-      {
-        id: 'adm-seed-2',
-        created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
-        status: 'Follow-up',
-        full_name: 'Ananya Verma',
-        mobile_number: '+91 97110 33445',
-        email: 'ananya.v@example.com',
-        current_qualification: 'Class 12 (Commerce)',
-        preferred_program: 'Bachelor of Business Administration (BBA - Honours)',
-        preferred_specialization: 'Business Analytics & FinTech',
-        preferred_location: 'Delhi NCR',
-        budget_range: '₹1.5 Lakh - ₹2.5 Lakh / Year',
-        preferred_intake_year: '2026',
-        message: 'Need help with direct admission counselling and scholarship criteria.'
-      }
-    ];
-    localStorage.setItem(STORAGE_KEYS.ADMISSIONS, JSON.stringify(seedAdmissions));
-  }
-
-  if (!localStorage.getItem(STORAGE_KEYS.COUNSELLING)) {
-    const seedCounselling: CounsellingRequest[] = [
-      {
-        id: 'coun-seed-1',
-        created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
-        status: 'New',
-        full_name: 'Meera Nambiar',
-        mobile_number: '+91 99001 55667',
-        email: 'meera.nambiar@example.com',
-        counselling_category: 'Classes 8–10',
-        preferred_mode: 'Online',
-        preferred_date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
-        preferred_time: '5:00 PM - 6:00 PM',
-        message: 'Daughter is in Class 10; confused between Science and Commerce stream.'
-      },
-      {
-        id: 'coun-seed-2',
-        created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
-        status: 'Counselling Scheduled',
-        full_name: 'Vikramjit Singh',
-        mobile_number: '+91 94170 88990',
-        email: 'vikram.singh@example.com',
-        counselling_category: 'Working Professional',
-        preferred_mode: 'Phone',
-        preferred_date: new Date(Date.now() + 86400000 * 1).toISOString().split('T')[0],
-        preferred_time: '11:00 AM - 12:00 PM',
-        message: '8 years experience in operations, exploring Executive MBA options.'
-      }
-    ];
-    localStorage.setItem(STORAGE_KEYS.COUNSELLING, JSON.stringify(seedCounselling));
-  }
-};
-
-// Initialize seed on module load in browser
-if (typeof window !== 'undefined') {
-  initLocalSeed();
+  return supabase;
 }
 
 /**
- * SUBMISSION 1: Career Guidance Lead
+ * Generate an ID on the client.
+ *
+ * This means we don't need a SELECT permission just to retrieve
+ * the generated database ID after INSERT.
  */
+function generateId(): string {
+  try {
+    if (
+      typeof crypto !== 'undefined' &&
+      typeof crypto.randomUUID === 'function'
+    ) {
+      return crypto.randomUUID();
+    }
+  } catch {
+    // Ignore and use fallback.
+  }
+
+  return (
+    Date.now().toString(36) +
+    '-' +
+    Math.random().toString(36).substring(2, 15)
+  );
+}
+
+/**
+ * Convert unknown errors into a useful message.
+ */
+function getErrorMessage(error: unknown): string {
+  if (!error) {
+    return 'An unknown error occurred.';
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  const err = error as {
+    message?: string;
+    details?: string;
+    hint?: string;
+    code?: string;
+  };
+
+  const parts: string[] = [];
+
+  if (err.message) parts.push(err.message);
+  if (err.details) parts.push(err.details);
+  if (err.hint) parts.push(`Hint: ${err.hint}`);
+  if (err.code) parts.push(`Code: ${err.code}`);
+
+  return parts.length > 0
+    ? parts.join(' | ')
+    : 'An unexpected error occurred.';
+}
+
+/**
+ * ------------------------------------------------------------
+ * SUBMISSION 1
+ * Career Guidance Lead
+ * ------------------------------------------------------------
+ */
+
 export async function submitCareerGuidance(
   data: Omit<CareerGuidanceLead, 'id' | 'created_at' | 'status'>
-): Promise<{ success: boolean; id?: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  id?: string;
+  error?: string;
+}> {
   try {
-    const newLead: CareerGuidanceLead = {
-      ...data,
-      id: 'cg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-      created_at: new Date().toISOString(),
-      status: 'New'
+    const client = getSupabaseClient();
+
+    const id = generateId();
+    const createdAt = new Date().toISOString();
+
+    const payload: Record<string, any> = {
+      id,
+
+      created_at: createdAt,
+
+      status: 'New',
+
+      full_name: data.full_name,
+      mobile_number: data.mobile_number,
+      email: data.email || null,
+
+      current_qualification: data.current_qualification,
+
+      school_college: data.school_college || null,
+      city: data.city || null,
+      state: data.state || null,
+
+      interested_field: data.interested_field || null,
+      preferred_course: data.preferred_course || null,
+      career_goal: data.career_goal || null,
+
+      preferred_counselling_mode:
+        data.preferred_counselling_mode ||
+        data.counselling_mode ||
+        'Online',
+
+      message: data.message || null
     };
 
-    // Store in Supabase if configured
-    if (isSupabaseConfigured() && supabase) {
-      const payload: any = {
-        full_name: data.full_name,
-        mobile_number: data.mobile_number,
-        email: data.email || null,
-        current_qualification: data.current_qualification,
-        school_college: data.school_college || null,
-        city: data.city || null,
-        state: data.state || null,
-        interested_field: data.interested_field || null,
-        preferred_course: data.preferred_course || null,
-        career_goal: data.career_goal || null,
-        preferred_counselling_mode: data.preferred_counselling_mode || data.counselling_mode || 'Online',
-        message: data.message || null,
-        status: 'New'
-      };
+    /**
+     * Optional fields.
+     */
+    if (data.who_is_booking) {
+      payload.who_is_booking = data.who_is_booking;
+    }
 
-      if (data.who_is_booking) payload.who_is_booking = data.who_is_booking;
-      if (data.parent_guardian_name) payload.parent_guardian_name = data.parent_guardian_name;
-      if (data.parent_guardian_mobile) payload.parent_guardian_mobile = data.parent_guardian_mobile;
-      if (data.counselling_mode) payload.counselling_mode = data.counselling_mode;
-      if (data.current_class) payload.current_class = data.current_class;
-      if (data.preferred_career) payload.preferred_career = data.preferred_career;
+    if (data.parent_guardian_name) {
+      payload.parent_guardian_name = data.parent_guardian_name;
+    }
 
-      const { data: inserted, error } = await supabase
-        .from('career_guidance_leads')
-        .insert([payload])
-        .select()
-        .single();
+    if (data.parent_guardian_mobile) {
+      payload.parent_guardian_mobile = data.parent_guardian_mobile;
+    }
 
-      if (error) {
-        console.warn('Supabase insert warning, saving to local store:', error.message);
-      } else if (inserted) {
-        newLead.id = inserted.id;
+    if (data.counselling_mode) {
+      payload.counselling_mode = data.counselling_mode;
+    }
+
+    if (data.current_class) {
+      payload.current_class = data.current_class;
+    }
+
+    if (data.preferred_career) {
+      payload.preferred_career = data.preferred_career;
+    }
+
+    console.log(
+      '[CareerVerse] Submitting career guidance lead to Supabase:',
+      {
+        id,
+        full_name: payload.full_name,
+        mobile_number: payload.mobile_number
       }
+    );
+
+    const { error } = await client
+      .from('career_guidance_leads')
+      .insert([payload]);
+
+    /**
+     * IMPORTANT:
+     *
+     * Do NOT continue if Supabase rejected the insert.
+     */
+    if (error) {
+      console.error(
+        '[CareerVerse] Career guidance Supabase insert failed:',
+        error
+      );
+
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      };
     }
 
-    // Always ensure local persistence
-    if (typeof window !== 'undefined') {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.CAREER_GUIDANCE) || '[]');
-      stored.unshift(newLead);
-      localStorage.setItem(STORAGE_KEYS.CAREER_GUIDANCE, JSON.stringify(stored));
-    }
+    console.log(
+      '[CareerVerse] Career guidance lead successfully saved:',
+      id
+    );
 
-    return { success: true, id: newLead.id };
-  } catch (err: any) {
-    console.error('submitCareerGuidance error:', err);
-    return { success: false, error: err.message || 'An unexpected error occurred. Please try again.' };
+    return {
+      success: true,
+      id
+    };
+  } catch (error) {
+    console.error(
+      '[CareerVerse] submitCareerGuidance error:',
+      error
+    );
+
+    return {
+      success: false,
+      error: getErrorMessage(error)
+    };
   }
 }
 
 /**
- * SUBMISSION 2: Admission Enquiry
+ * ------------------------------------------------------------
+ * SUBMISSION 2
+ * Admission Enquiry
+ * ------------------------------------------------------------
  */
+
 export async function submitAdmissionEnquiry(
   data: Omit<AdmissionEnquiry, 'id' | 'created_at' | 'status'>
-): Promise<{ success: boolean; id?: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  id?: string;
+  error?: string;
+}> {
   try {
-    const newEnquiry: AdmissionEnquiry = {
-      ...data,
-      id: 'adm-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-      created_at: new Date().toISOString(),
-      status: 'New'
+    const client = getSupabaseClient();
+
+    const id = generateId();
+    const createdAt = new Date().toISOString();
+
+    const payload: Record<string, any> = {
+      id,
+
+      created_at: createdAt,
+
+      status: 'New',
+
+      full_name: data.full_name,
+      mobile_number: data.mobile_number,
+      email: data.email || null,
+
+      current_qualification: data.current_qualification,
+
+      preferred_program: data.preferred_program,
+
+      preferred_specialization:
+        data.preferred_specialization || null,
+
+      preferred_location:
+        data.preferred_location || null,
+
+      budget_range:
+        data.budget_range || null,
+
+      preferred_intake_year:
+        data.preferred_intake_year || null,
+
+      message:
+        data.message || null
     };
 
-    if (isSupabaseConfigured() && supabase) {
-      const payload: any = {
-        full_name: data.full_name,
-        mobile_number: data.mobile_number,
-        email: data.email,
-        current_qualification: data.current_qualification,
-        preferred_program: data.preferred_program,
-        preferred_specialization: data.preferred_specialization || null,
-        preferred_location: data.preferred_location || null,
-        budget_range: data.budget_range || null,
-        preferred_intake_year: data.preferred_intake_year || null,
-        message: data.message || null,
-        status: 'New'
-      };
+    /**
+     * Optional fields.
+     */
+    if (data.who_is_booking) {
+      payload.who_is_booking = data.who_is_booking;
+    }
 
-      if (data.who_is_booking) payload.who_is_booking = data.who_is_booking;
-      if (data.parent_guardian_name) payload.parent_guardian_name = data.parent_guardian_name;
-      if (data.parent_guardian_mobile) payload.parent_guardian_mobile = data.parent_guardian_mobile;
-      if (data.current_class) payload.current_class = data.current_class;
-      if (data.preferred_career) payload.preferred_career = data.preferred_career;
+    if (data.parent_guardian_name) {
+      payload.parent_guardian_name =
+        data.parent_guardian_name;
+    }
 
-      const { data: inserted, error } = await supabase
-        .from('admission_enquiries')
-        .insert([payload])
-        .select()
-        .single();
+    if (data.parent_guardian_mobile) {
+      payload.parent_guardian_mobile =
+        data.parent_guardian_mobile;
+    }
 
-      if (error) {
-        console.warn('Supabase insert warning, saving to local store:', error.message);
-      } else if (inserted) {
-        newEnquiry.id = inserted.id;
+    if (data.current_class) {
+      payload.current_class = data.current_class;
+    }
+
+    if (data.preferred_career) {
+      payload.preferred_career = data.preferred_career;
+    }
+
+    console.log(
+      '[CareerVerse] Submitting admission enquiry to Supabase:',
+      {
+        id,
+        full_name: payload.full_name,
+        mobile_number: payload.mobile_number
       }
+    );
+
+    const { error } = await client
+      .from('admission_enquiries')
+      .insert([payload]);
+
+    /**
+     * Never show success if Supabase rejected it.
+     */
+    if (error) {
+      console.error(
+        '[CareerVerse] Admission Supabase insert failed:',
+        error
+      );
+
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      };
     }
 
-    if (typeof window !== 'undefined') {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.ADMISSIONS) || '[]');
-      stored.unshift(newEnquiry);
-      localStorage.setItem(STORAGE_KEYS.ADMISSIONS, JSON.stringify(stored));
-    }
+    console.log(
+      '[CareerVerse] Admission enquiry successfully saved:',
+      id
+    );
 
-    return { success: true, id: newEnquiry.id };
-  } catch (err: any) {
-    console.error('submitAdmissionEnquiry error:', err);
-    return { success: false, error: err.message || 'An unexpected error occurred. Please try again.' };
+    return {
+      success: true,
+      id
+    };
+  } catch (error) {
+    console.error(
+      '[CareerVerse] submitAdmissionEnquiry error:',
+      error
+    );
+
+    return {
+      success: false,
+      error: getErrorMessage(error)
+    };
   }
 }
 
 /**
- * SUBMISSION 3: Counselling Request ("Book Career Counselling")
+ * ------------------------------------------------------------
+ * SUBMISSION 3
+ * Counselling Request
+ * ------------------------------------------------------------
  */
+
 export async function submitCounsellingRequest(
   data: Omit<CounsellingRequest, 'id' | 'created_at' | 'status'>
-): Promise<{ success: boolean; id?: string; error?: string }> {
+): Promise<{
+  success: boolean;
+  id?: string;
+  error?: string;
+}> {
   try {
-    const newRequest: CounsellingRequest = {
-      ...data,
-      id: 'coun-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-      created_at: new Date().toISOString(),
-      status: 'New'
+    const client = getSupabaseClient();
+
+    const id = generateId();
+    const createdAt = new Date().toISOString();
+
+    const payload: Record<string, any> = {
+      id,
+
+      created_at: createdAt,
+
+      status: 'New',
+
+      full_name: data.full_name,
+      mobile_number: data.mobile_number,
+      email: data.email || null,
+
+      counselling_category:
+        data.counselling_category,
+
+      preferred_mode:
+        data.preferred_mode ||
+        data.counselling_mode ||
+        'Online',
+
+      preferred_date:
+        data.preferred_date || null,
+
+      preferred_time:
+        data.preferred_time || null,
+
+      message:
+        data.message || null
     };
 
-    if (isSupabaseConfigured() && supabase) {
-      const payload: any = {
-        full_name: data.full_name,
-        mobile_number: data.mobile_number,
-        email: data.email || null,
-        counselling_category: data.counselling_category,
-        preferred_mode: data.preferred_mode || data.counselling_mode || 'Online',
-        preferred_date: data.preferred_date || null,
-        preferred_time: data.preferred_time || null,
-        message: data.message || null,
-        status: 'New'
-      };
+    /**
+     * Optional fields.
+     */
+    if (data.who_is_booking) {
+      payload.who_is_booking = data.who_is_booking;
+    }
 
-      if (data.who_is_booking) payload.who_is_booking = data.who_is_booking;
-      if (data.parent_guardian_name) payload.parent_guardian_name = data.parent_guardian_name;
-      if (data.parent_guardian_mobile) payload.parent_guardian_mobile = data.parent_guardian_mobile;
-      if (data.counselling_mode) payload.counselling_mode = data.counselling_mode;
-      if (data.current_class) payload.current_class = data.current_class;
-      if (data.preferred_career) payload.preferred_career = data.preferred_career;
+    if (data.parent_guardian_name) {
+      payload.parent_guardian_name =
+        data.parent_guardian_name;
+    }
 
-      const { data: inserted, error } = await supabase
-        .from('counselling_requests')
-        .insert([payload])
-        .select()
-        .single();
+    if (data.parent_guardian_mobile) {
+      payload.parent_guardian_mobile =
+        data.parent_guardian_mobile;
+    }
 
-      if (error) {
-        console.warn('Supabase insert warning, saving to local store:', error.message);
-      } else if (inserted) {
-        newRequest.id = inserted.id;
+    if (data.counselling_mode) {
+      payload.counselling_mode =
+        data.counselling_mode;
+    }
+
+    if (data.current_class) {
+      payload.current_class =
+        data.current_class;
+    }
+
+    if (data.preferred_career) {
+      payload.preferred_career =
+        data.preferred_career;
+    }
+
+    console.log(
+      '[CareerVerse] Submitting counselling request to Supabase:',
+      {
+        id,
+        full_name: payload.full_name,
+        mobile_number: payload.mobile_number
       }
+    );
+
+    const { error } = await client
+      .from('counselling_requests')
+      .insert([payload]);
+
+    /**
+     * Never show success if Supabase rejected it.
+     */
+    if (error) {
+      console.error(
+        '[CareerVerse] Counselling Supabase insert failed:',
+        error
+      );
+
+      return {
+        success: false,
+        error: getErrorMessage(error)
+      };
     }
 
-    if (typeof window !== 'undefined') {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.COUNSELLING) || '[]');
-      stored.unshift(newRequest);
-      localStorage.setItem(STORAGE_KEYS.COUNSELLING, JSON.stringify(stored));
-    }
+    console.log(
+      '[CareerVerse] Counselling request successfully saved:',
+      id
+    );
 
-    return { success: true, id: newRequest.id };
-  } catch (err: any) {
-    console.error('submitCounsellingRequest error:', err);
-    return { success: false, error: err.message || 'An unexpected error occurred. Please try again.' };
+    return {
+      success: true,
+      id
+    };
+  } catch (error) {
+    console.error(
+      '[CareerVerse] submitCounsellingRequest error:',
+      error
+    );
+
+    return {
+      success: false,
+      error: getErrorMessage(error)
+    };
   }
 }
 
 /**
- * ADMIN: Fetch all leads unified
+ * ------------------------------------------------------------
+ * ADMIN
+ * Fetch all leads
+ * ------------------------------------------------------------
+ *
+ * IMPORTANT:
+ * Admin reads ONLY from Supabase.
+ *
+ * No localStorage fallback.
+ * No dummy records.
+ * No device-specific records.
+ * ------------------------------------------------------------
  */
+
 export async function fetchUnifiedLeads(): Promise<UnifiedLead[]> {
   try {
-    initLocalSeed();
+    const client = getSupabaseClient();
 
-    // If Supabase configured, attempt fetching from Supabase tables
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        const [resCG, resAdm, resCoun] = await Promise.all([
-          supabase.from('career_guidance_leads').select('*').order('created_at', { ascending: false }),
-          supabase.from('admission_enquiries').select('*').order('created_at', { ascending: false }),
-          supabase.from('counselling_requests').select('*').order('created_at', { ascending: false }),
-        ]);
+    console.log(
+      '[CareerVerse] Fetching leads from Supabase...'
+    );
 
-        if (!resCG.error && !resAdm.error && !resCoun.error) {
-          const list: UnifiedLead[] = [
-            ...(resCG.data || []).map((item) => ({ ...item, lead_type: 'career_guidance' as const })),
-            ...(resAdm.data || []).map((item) => ({ ...item, lead_type: 'admission_enquiry' as const })),
-            ...(resCoun.data || []).map((item) => ({ ...item, lead_type: 'counselling_request' as const })),
-          ];
-          list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          if (list.length > 0) return list;
-        }
-      } catch (err) {
-        console.warn('Supabase fetch failed or restricted by RLS; falling back to local store:', err);
-      }
+    const [
+      careerGuidanceResult,
+      admissionResult,
+      counsellingResult
+    ] = await Promise.all([
+      client
+        .from('career_guidance_leads')
+        .select('*')
+        .order('created_at', {
+          ascending: false
+        }),
+
+      client
+        .from('admission_enquiries')
+        .select('*')
+        .order('created_at', {
+          ascending: false
+        }),
+
+      client
+        .from('counselling_requests')
+        .select('*')
+        .order('created_at', {
+          ascending: false
+        })
+    ]);
+
+    /**
+     * Check every table individually.
+     */
+    if (careerGuidanceResult.error) {
+      console.error(
+        '[CareerVerse] Career guidance fetch failed:',
+        careerGuidanceResult.error
+      );
+
+      throw careerGuidanceResult.error;
     }
 
-    // Local storage fallback
-    const cgList: CareerGuidanceLead[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.CAREER_GUIDANCE) || '[]');
-    const admList: AdmissionEnquiry[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.ADMISSIONS) || '[]');
-    const counList: CounsellingRequest[] = JSON.parse(localStorage.getItem(STORAGE_KEYS.COUNSELLING) || '[]');
+    if (admissionResult.error) {
+      console.error(
+        '[CareerVerse] Admission fetch failed:',
+        admissionResult.error
+      );
+
+      throw admissionResult.error;
+    }
+
+    if (counsellingResult.error) {
+      console.error(
+        '[CareerVerse] Counselling fetch failed:',
+        counsellingResult.error
+      );
+
+      throw counsellingResult.error;
+    }
+
+    const careerGuidanceLeads: UnifiedLead[] = (
+      careerGuidanceResult.data || []
+    ).map((item: any) => ({
+      ...item,
+      lead_type: 'career_guidance' as const
+    }));
+
+    const admissionLeads: UnifiedLead[] = (
+      admissionResult.data || []
+    ).map((item: any) => ({
+      ...item,
+      lead_type: 'admission_enquiry' as const
+    }));
+
+    const counsellingLeads: UnifiedLead[] = (
+      counsellingResult.data || []
+    ).map((item: any) => ({
+      ...item,
+      lead_type: 'counselling_request' as const
+    }));
 
     const unified: UnifiedLead[] = [
-      ...cgList.map(item => ({ ...item, lead_type: 'career_guidance' as const })),
-      ...admList.map(item => ({ ...item, lead_type: 'admission_enquiry' as const })),
-      ...counList.map(item => ({ ...item, lead_type: 'counselling_request' as const })),
+      ...careerGuidanceLeads,
+      ...admissionLeads,
+      ...counsellingLeads
     ];
 
-    unified.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    /**
+     * Newest leads first.
+     */
+    unified.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+    );
+
+    console.log(
+      '[CareerVerse] Total Supabase leads loaded:',
+      unified.length
+    );
+
     return unified;
-  } catch (err) {
-    console.error('fetchUnifiedLeads error:', err);
-    return [];
+  } catch (error) {
+    console.error(
+      '[CareerVerse] fetchUnifiedLeads error:',
+      error
+    );
+
+    /**
+     * IMPORTANT:
+     *
+     * Do not silently return fake/local data.
+     *
+     * Returning [] means the admin UI can display an actual
+     * database error instead of pretending there are zero leads.
+     */
+    throw new Error(
+      `Unable to load leads from the database: ${getErrorMessage(error)}`
+    );
   }
 }
 
 /**
- * ADMIN: Update lead status & notes
+ * ------------------------------------------------------------
+ * ADMIN
+ * Update lead status and internal notes
+ * ------------------------------------------------------------
  */
+
 export async function updateLeadStatus(
-  leadType: 'career_guidance' | 'admission_enquiry' | 'counselling_request',
+  leadType:
+    | 'career_guidance'
+    | 'admission_enquiry'
+    | 'counselling_request',
+
   id: string,
+
   newStatus: LeadStatus,
+
   internalNotes?: string
 ): Promise<boolean> {
   try {
-    const key = leadType === 'career_guidance' 
-      ? STORAGE_KEYS.CAREER_GUIDANCE 
-      : leadType === 'admission_enquiry'
-        ? STORAGE_KEYS.ADMISSIONS
-        : STORAGE_KEYS.COUNSELLING;
+    const client = getSupabaseClient();
 
-    const list = JSON.parse(localStorage.getItem(key) || '[]');
-    const idx = list.findIndex((item: any) => item.id === id);
-    if (idx !== -1) {
-      list[idx].status = newStatus;
-      if (internalNotes !== undefined) {
-        list[idx].internal_notes = internalNotes;
-      }
-      localStorage.setItem(key, JSON.stringify(list));
-    }
-
-    if (isSupabaseConfigured() && supabase) {
-      const tableName = leadType === 'career_guidance'
+    const tableName =
+      leadType === 'career_guidance'
         ? 'career_guidance_leads'
         : leadType === 'admission_enquiry'
           ? 'admission_enquiries'
           : 'counselling_requests';
 
-      const updatePayload: any = { status: newStatus };
-      if (internalNotes !== undefined) updatePayload.internal_notes = internalNotes;
+    const updatePayload: Record<string, any> = {
+      status: newStatus
+    };
 
-      await supabase.from(tableName).update(updatePayload).eq('id', id);
+    if (internalNotes !== undefined) {
+      updatePayload.internal_notes =
+        internalNotes;
     }
 
+    console.log(
+      '[CareerVerse] Updating lead:',
+      {
+        table: tableName,
+        id,
+        status: newStatus
+      }
+    );
+
+    const { error } = await client
+      .from(tableName)
+      .update(updatePayload)
+      .eq('id', id);
+
+    if (error) {
+      console.error(
+        '[CareerVerse] Lead status update failed:',
+        error
+      );
+
+      return false;
+    }
+
+    console.log(
+      '[CareerVerse] Lead updated successfully:',
+      id
+    );
+
     return true;
-  } catch (err) {
-    console.error('updateLeadStatus error:', err);
+  } catch (error) {
+    console.error(
+      '[CareerVerse] updateLeadStatus error:',
+      error
+    );
+
     return false;
   }
 }
 
 /**
- * ADMIN: Delete lead record
+ * ------------------------------------------------------------
+ * ADMIN
+ * Delete lead
+ * ------------------------------------------------------------
  */
+
 export async function deleteLead(
-  leadType: 'career_guidance' | 'admission_enquiry' | 'counselling_request',
+  leadType:
+    | 'career_guidance'
+    | 'admission_enquiry'
+    | 'counselling_request',
+
   id: string
 ): Promise<boolean> {
   try {
-    const key = leadType === 'career_guidance' 
-      ? STORAGE_KEYS.CAREER_GUIDANCE 
-      : leadType === 'admission_enquiry'
-        ? STORAGE_KEYS.ADMISSIONS
-        : STORAGE_KEYS.COUNSELLING;
+    const client = getSupabaseClient();
 
-    const list = JSON.parse(localStorage.getItem(key) || '[]');
-    const filtered = list.filter((item: any) => item.id !== id);
-    localStorage.setItem(key, JSON.stringify(filtered));
-
-    if (isSupabaseConfigured() && supabase) {
-      const tableName = leadType === 'career_guidance'
+    const tableName =
+      leadType === 'career_guidance'
         ? 'career_guidance_leads'
         : leadType === 'admission_enquiry'
           ? 'admission_enquiries'
           : 'counselling_requests';
 
-      await supabase.from(tableName).delete().eq('id', id);
+    console.log(
+      '[CareerVerse] Deleting lead:',
+      {
+        table: tableName,
+        id
+      }
+    );
+
+    const { error } = await client
+      .from(tableName)
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error(
+        '[CareerVerse] Lead deletion failed:',
+        error
+      );
+
+      return false;
     }
 
+    console.log(
+      '[CareerVerse] Lead deleted successfully:',
+      id
+    );
+
     return true;
-  } catch (err) {
-    console.error('deleteLead error:', err);
+  } catch (error) {
+    console.error(
+      '[CareerVerse] deleteLead error:',
+      error
+    );
+
     return false;
   }
 }
+One important change in your admin component
+
+Because I changed fetchUnifiedLeads() to throw the database error instead of silently returning localStorage data, your admin page should catch that error.
+
+Wherever you currently have something like:
+
+const leads = await fetchUnifiedLeads();
+setLeads(leads);
+
+change it to:
+
+try {
+  const leads = await fetchUnifiedLeads();
+  setLeads(leads);
+  setError('');
+} catch (error: any) {
+  console.error('Failed to load leads:', error);
+
+  setLeads([]);
+  setError(
+    error?.message ||
+    'Unable to load leads from the database.'
+  );
+}
+
+If your admin page doesn't currently have setError, add:
+
+const [error, setError] = useState('');
+
+and display it somewhere appropriate.
+
+Very important: remove the old dummy-data behavior
+
+Your old file had:
+
+initLocalSeed();
+
+and created records such as:
+
+Aarav Sharma
+Pooja Iyer
+Rohan Deshmukh
+Ananya Verma
+Meera Nambiar
+Vikramjit Singh
+
+Those were localStorage seed records.
+
+The new code has none of that.
+
+So after this change:
+
+Phone
+Phone
+   ↓
+CareerVerse website
+   ↓
+Supabase
+   ↓
+career_guidance_leads
+Laptop
+Laptop
+   ↓
+CareerVerse website
+   ↓
+Supabase
+   ↓
+career_guidance_leads
+Admin
+Admin
+   ↓
+Supabase
+   ↓
+career_guidance_leads
+admission_enquiries
+counselling_requests
+
+There is no device-specific copy.
+
+But there is one more thing we must check
+
+This code will not hide the problem anymore.
+
+If your phone submits and Supabase rejects it, instead of:
+
+✅ Submitted successfully
+
+you should now get something like:
+
+❌ new row violates row-level security policy
+
+or
+
+❌ permission denied
+
+or another actual Supabase error.
+
+That is exactly what we want for the next test.
+
+Your existing form already handles res.success === false and puts the returned error into the form error state.
+
+After deploying this code, test exactly this:
+Deploy to Vercel.
+Open the production careerverse-india.vercel.app on your phone.
+Submit a completely new test lead, e.g. PHONE TEST 001.
+Confirm it says Submitted successfully.
+Immediately open Supabase → career_guidance_leads.
+Check whether PHONE TEST 001 exists.
+If it does not exist, take a screenshot of the error shown on the phone.
+
+Don't change the Supabase database yet. The next error will tell us whether the remaining issue is RLS, environment configuration, deployment version, or something else.
+
+Also, because you are building this for real users, I would not put the Supabase service_role key into the frontend to bypass this. The browser should use the public/anon key with properly configured RLS policies.
+
+should i edit it directly in github code
+
+Yes — edit the code directly in GitHub. Since your laptop users can submit successfully and the phone submission is showing “Submitted successfully” but no row reaches Supabase, the fix should be made in the GitHub source code, then Vercel will redeploy it.
+
+Do this
+
+GitHub → your CareerVerse repository → find the file containing the form submission code.
+
+It will usually be something like:
+
+src/
+  components/
+    CareerGuidanceForm.jsx
+
+or
+
+app/
+  ...
+
+or possibly:
+
+pages/
+  ...
+Important
+
+Don't replace the whole project with a generic code sample yet.
+
+I need to see your actual current form code, because your project already has:
+
+Supabase connection
+career_guidance_leads table
+Admin dashboard
+different lead types
+status handling
+success message
+Vercel deployment
+
+We should fix the existing submission logic rather than risk breaking those parts.
+
+What I want you to do now
+
+In GitHub, open the file that contains the Career Guidance form and copy the complete code here.
+
+If you're not sure which file it is:
+
+Open GitHub repository.
+Press Ctrl + Shift + F.
+Search for:
+Submitted successfully
+Open the file where that text appears.
+Copy the entire file and send it here.
+
+Also search for:
+
+career_guidance_leads
+
+If it is in a different file, send that file too.
+
+Then I can give you the complete corrected code, specifically for your existing CareerVerse project.
+
+One important point
+
+Don't change Supabase again right now.
+
+Your screenshot already proves that the database/table is working because:
+
+test 4
+
+was successfully inserted into career_guidance_leads.
+
+So the problem we're chasing is specifically:
+
+Phone → deployed CareerVerse frontend → Supabase
+
+rather than:
+
+Supabase → Admin dashboard
+
+Once we fix the frontend submission path, the phone submission should create the row in Supabase and then appear in Admin automatically.
+
+Send me the current Career Guidance form file from GitHub, and I'll rewrite the complete file for you.
