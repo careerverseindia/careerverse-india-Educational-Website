@@ -217,7 +217,7 @@ export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({
 
   const handleAction = (type?: string) => {
     if (type === 'test') {
-      const url = settings.psychometric_link || 'https://assessment.careerverse.in';
+      const url = settings.psychometric_link || 'https://career-finder.universityadmission.co.in?id=M2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZkMTYzM2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZk';
       try {
         const win = window.open(url, '_blank', 'noopener,noreferrer');
         if (!win) {
@@ -314,7 +314,7 @@ export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({
             </button>
 
             <a
-              href={settings.psychometric_link || 'https://assessment.careerverse.in'}
+              href={settings.psychometric_link || 'https://career-finder.universityadmission.co.in?id=M2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZkMTYzM2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZk'}
               target="_blank"
               rel="noopener noreferrer"
               className="py-3 px-6 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-lg border border-white/20 transition-all cursor-pointer inline-flex items-center gap-1.5"
@@ -477,7 +477,7 @@ export const HowItWorksPage: React.FC<HowItWorksPageProps> = ({
                 <span>Admission Guidance Form</span>
               </button>
               <a
-                href={settings.psychometric_link || 'https://assessment.careerverse.in'}
+                href={settings.psychometric_link || 'https://career-finder.universityadmission.co.in?id=M2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZkMTYzM2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZk'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="py-3 px-5 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-lg border border-white/20 transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
