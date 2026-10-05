@@ -12,9 +12,10 @@ export interface SiteSettings {
 const SETTINGS_STORAGE_KEY = 'careerverse_site_settings';
 const UNIVERSITIES_STORAGE_KEY = 'careerverse_custom_universities';
 const CATEGORIES_STORAGE_KEY = 'careerverse_custom_categories';
+const LEGACY_PSYCHOMETRIC_LINK = 'https://assessment.careerverse.in';
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  psychometric_link: 'https://assessment.careerverse.in',
+  psychometric_link: 'https://career-finder.universityadmission.co.in?id=M2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZkMTYzM2UzZWVjNmItMzNlZi00NDZmLWExNGEtYTI1OGMxYTllNzZk',
   office_location: '23-11-271, S V Nagar, Revenue Ward No. 23, Tirupati – 517501',
   map_embed_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15509.393700479!2d79.419!3d13.628!2m3!1f0!2f0!3f0!3m2!1i1024!2f768!4f13.1!3m3!1m2!1s0x3a4d4b0000000001%3A0x1!2sS%20V%20Nagar%2C%20Tirupati%2C%20Andhra%20Pradesh%20517501!5e0!3m2!1sen!2sin!4v1711200000000!5m2!1sen!2sin',
 };
@@ -25,7 +26,12 @@ export function getSiteSettings(): SiteSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (settings.psychometric_link === LEGACY_PSYCHOMETRIC_LINK) {
+      settings.psychometric_link = DEFAULT_SETTINGS.psychometric_link;
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    }
+    return settings;
   } catch (err) {
     return DEFAULT_SETTINGS;
   }
