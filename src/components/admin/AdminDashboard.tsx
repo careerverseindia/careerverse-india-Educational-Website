@@ -890,7 +890,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     required
                     value={settings.psychometric_link}
                     onChange={(e) => setSettings(prev => ({ ...prev, psychometric_link: e.target.value }))}
-                    placeholder="https://assessment.careerverse.in"
+                    placeholder="https://career-finder.universityadmission.co.in"
                     className="w-full pl-9 pr-3 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-[#0B2A52] outline-hidden font-mono"
                   />
                 </div>
